@@ -1,7 +1,36 @@
+require('dotenv').config()
 const express = require('express');
 const http = require('http')
 const { Server } = require("socket.io");
 const cors = require('cors')
+const { MongoClient, ServerApiVersion } = require('mongodb')
+const connectDB = require('./db/connectDB')
+const chatController = require('./controllers/chatController')
+const keySessionController = require('./controllers/keyController')
+
+const sampleMessageData = {
+    senderId: "Alice",
+    receiverId: "Bob",
+    encryptedMessage: "<Encrypted_Content>",
+    sessionId: "session_1"
+}
+
+const sampleKeyData = {
+    userId: "Alice",
+    sessionId: "session_1",
+    publicKey: "ABCD",
+    privateKey: "EFGH",
+    createdAt: new Date().getTime(),
+    expiresAt: new Date(new Date().getTime() + (24 * 60 * 60 * 1000))
+}
+
+connectDB().then(() => {
+    chatController.saveChatMessage(sampleMessageData)
+    .then(() => {
+        keySessionController.saveKeySession(sampleKeyData)
+    })
+    
+})
 
 const app = express();
 app.use(cors());
