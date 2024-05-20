@@ -2,12 +2,15 @@ import { useEffect, useState, useRef } from 'react'
 import io from 'socket.io-client'
 import './App.css'
 import config from './config'
+import { computeSharedKey, generateKeyPair } from '../lib/ecdh';
 
 function App(){
   const [userConfig, setUserConfig] = useState({username: 'Loading...'});
   const [message, setMessage] = useState('');
   const [chat, setChat] = useState([]);
   const socketRef = useRef(null);
+  const sharedKeyRef = useRef(null);
+
   useEffect(()=> {
     const port = window.location.port; 
     const user = port === '4020' ? 'alice' : port === '2040' ? 'bob' : null; 
@@ -18,6 +21,22 @@ function App(){
     }
     const socket = io('http://localhost:3001');
     socketRef.current = socket;
+
+    const clientKeyPair = generateKeyPair();
+    socket.on('connect', () => {
+      console.log('Connected to server');
+
+      socket.on('serverPublicKey', (serverPublicKey) => {
+        console.log('Received server public key: ', serverPublicKey);
+      })
+
+      socket.emit('clientPublicKey', clientKeyPair.publicKey);
+
+      const sharedKey = computeSharedKey(clientKeyPair.privateKey, serverPublicKey);
+      console.log('Shared Key: ', sharedKey.toString(16));
+
+      sharedKeyRef.current = sharedKey
+    })
     socket.on('chat message', (msg) => {
       setChat((prevChat) => [...prevChat, msg]);
     });

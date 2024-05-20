@@ -7,6 +7,7 @@ const { MongoClient, ServerApiVersion } = require('mongodb')
 const connectDB = require('./db/connectDB')
 const chatController = require('./controllers/chatController')
 const keySessionController = require('./controllers/keyController')
+const { generateKeyPair, computeSharedKey } = require('./lib/ecdh')
 
 const sampleMessageData = {
     senderId: "Alice",
@@ -24,13 +25,13 @@ const sampleKeyData = {
     expiresAt: new Date(new Date().getTime() + (24 * 60 * 60 * 1000))
 }
 
-connectDB().then(() => {
-    chatController.saveChatMessage(sampleMessageData)
-    .then(() => {
-        keySessionController.saveKeySession(sampleKeyData)
-    })
+// connectDB().then(() => {
+//     chatController.saveChatMessage(sampleMessageData)
+//     .then(() => {
+//         keySessionController.saveKeySession(sampleKeyData)
+//     })
     
-})
+// })
 
 const app = express();
 app.use(cors());
@@ -46,6 +47,17 @@ const io = new Server(server, {
 
 io.on('connection', (socket) => {
     console.log('A user connected', socket.id)
+
+    const serverKeyPair = generateKeyPair();
+
+    socket.emit('serverPublicKey', serverKeyPair.publicKey)
+
+    socket.on('clientPublicKey', (clientPublicKey) => {
+        const sharedKey = computeSharedKey(serverKeyPair.privateKey, clientPublicKey);
+        console.log('Shared Key: ', sharedKey.toString(16));
+    })
+
+
     socket.on('disconnect', () => {
         console.log('A user disconnected', socket.id);
     })
