@@ -3,7 +3,7 @@ const bigInt = require('big-integer');
 const { BBS } = require('./bbs');
 /*
     TODO: 
-    - KECCAK HASH FUNCTION
+    - KECCAK HASH FUNCTION (BONUS)
 */
 
 function findP(q, bits){

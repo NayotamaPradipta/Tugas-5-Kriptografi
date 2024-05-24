@@ -1,4 +1,4 @@
-const bigInt = require("big-integer");
+import bigInt from 'big-integer';
 
 // Function to generate prime numbers congruent to 3 mod 4
 function generatePrime() {
@@ -44,7 +44,7 @@ function findNextPrime(num){
  * @param { Boolean } prime_flag - If true returns prime, else returns random number
  * @returns { bigInt } random_number - Cryptographically secure random number  
  */
-function BBS(bits, prime_flag) {
+export function BBS(bits, prime_flag) {
     const p = generatePrime();
     const q = generatePrime();
     const n = p.multiply(q);
@@ -68,8 +68,4 @@ function BBS(bits, prime_flag) {
         random_number = findNextPrime(random_number);
     } 
     return bigInt(random_number);
-}
-
-module.exports = {
-    BBS
 }

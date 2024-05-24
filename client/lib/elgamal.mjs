@@ -1,4 +1,4 @@
-import { pointAddition, scalarMultiplication } from './ecc.js';
+import { pointAddition, scalarMultiplication } from './ecc.mjs';
 
 // Parameter dari Kurva secp192r1 (P-192)
 const p  = BigInt('0xfffffffffffffffffffffffffffffffeffffffffffffffff');

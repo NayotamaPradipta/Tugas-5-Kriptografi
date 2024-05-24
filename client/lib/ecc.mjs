@@ -1,6 +1,6 @@
-const bigInt = require('big-integer');
+import bigInt from 'big-integer';
 // Modular inverse untuk k * k^-1 ≡ 1 (mod p)
-function modInverse(k, p) {
+export function modInverse(k, p) {
   if (k.isZero()) throw new Error('error pembagian dengan 0');
   // kasus k bernilai negatif
   if (k.isNegative()) {
@@ -21,7 +21,7 @@ function modInverse(k, p) {
 }
 
 // Penjumlahan 2 point di elliptic curve pada GF(p)
-function pointAddition(P, Q, p, a) {
+export function pointAddition(P, Q, p, a) {
   // Kasus penjumlahan dengan point at infinity [null, null]
   if (P[0] === null) return Q; 
   if (Q[0] === null) return P;
@@ -40,7 +40,7 @@ function pointAddition(P, Q, p, a) {
 }
 
 // Perkalian poin P di elliptic curve pada GF(p) dengan skalar k
-function scalarMultiplication(k, P, p, a) {
+export function scalarMultiplication(k, P, p, a) {
   let R = [null, null];
   let Q = P;
   while (k.isPositive()) {
@@ -49,10 +49,4 @@ function scalarMultiplication(k, P, p, a) {
     k = k.shiftRight(1);
   }
   return R;
-}
-
-module.exports = {
-  modInverse,
-  pointAddition,
-  scalarMultiplication
 }

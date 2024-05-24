@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from 'react'
 import io from 'socket.io-client'
 import './App.css'
 import config from './config'
-import { computeSharedKey, generateKeyPair } from '../lib/ecdh';
+import { computeSharedKey, generateKeyPair } from '../lib/ecdh.mjs';
 
 function App(){
   const [userConfig, setUserConfig] = useState({username: 'Loading...'});
