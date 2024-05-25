@@ -1,6 +1,7 @@
 const crypto = require('crypto');
 const bigInt = require('big-integer');
 const { BBS } = require('./bbs');
+const { keccakHashFromString } = require('./keccak');
 /*
     TODO: 
     - KECCAK HASH FUNCTION (BONUS)
@@ -75,7 +76,7 @@ function hash(message, x) {
 function generate_DS(message, s, p, q, alpha){
     const r = generatePrivateKey(q);
     const x = alpha.modPow(r, p);
-    const e = hash(message, x)
+    const e = keccakHashFromString(message + x.toString());
     const y = r.add(s.multiply(e)).mod(q);
     return { e, y };
 }
@@ -85,7 +86,7 @@ function verify_DS(message, signature, public_key, p, alpha){
     const term1 = alpha.modPow(y, p);
     const term2 = public_key.modPow(e, p);
     const x_aksen = term1.multiply(term2).mod(p); 
-    const e_aksen = hash(message, x_aksen)
+    const e_aksen = keccakHashFromString(message + x_aksen.toString());
     return e.equals(e_aksen);
 }
 
