@@ -54,7 +54,7 @@ export function encrypt(publicKey, message) {
     const k = BigInt('0x' + Array.from(getRandomBytes(24)).map(b => b.toString(16).padStart(2, '0')).join('')) % n;
     const C1 = scalarMultiplication(k, [Gx, Gy], p, a);
     const C2 = pointAddition(M[i], scalarMultiplication(k, publicKey, p, a), p, a);
-    cipher.push({ C1, C2 });
+    cipher.push([ C1, C2 ]);
   }
 
   return cipher;
@@ -65,7 +65,8 @@ export function decrypt(privateKey, cipher) {
 
   // Dekripsi setiap cipher points pair
   for (let i = 0; i < cipher.length; i++) {
-    const { C1, C2 } = cipher[i];
+    const C1 = cipher[i][0];
+    const C2 = cipher[i][1];
     const S = scalarMultiplication(privateKey, C1, p, a);
     const M = pointAddition(C2, [S[0], p - S[1]], p, a);
     const char = decodePoint(M);
