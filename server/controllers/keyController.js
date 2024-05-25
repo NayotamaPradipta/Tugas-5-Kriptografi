@@ -1,4 +1,4 @@
-const KeySession = require('../models/key')
+const KeySession = require('../models/key');
 
 exports.saveKeySession = async function(data) {
     try {
@@ -11,9 +11,9 @@ exports.saveKeySession = async function(data) {
             expiresAt: data.expiresAt,
             isActive: data.isActive
         })
-        await key.save()
-        console.log("Key session saved successfully")
+        await key.save();
+        console.log("Key session saved successfully");
     } catch (error) {
-        console.log('Error saving key session: ', error)
+        console.log('Error saving key session: ', error);
     }
 }

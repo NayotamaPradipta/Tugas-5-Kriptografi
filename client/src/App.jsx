@@ -19,23 +19,29 @@ function App(){
     } else {
       setUserConfig({username: 'Unknown User'});
     }
-    const socket = io('http://localhost:3001');
+    // TODO: Save sharedKey to Local Storage --> Only generateKeyPair if active shared key doesn't exist
+    const clientKeyPair = generateKeyPair();
+    const socket = io('http://localhost:3001', {
+      query: { 
+        userId: user,
+        clientPublicKey: clientKeyPair.publicKey
+      }
+    });
     socketRef.current = socket;
 
-    const clientKeyPair = generateKeyPair();
     socket.on('connect', () => {
       console.log('Connected to server');
-
-      socket.on('serverPublicKey', (serverPublicKey) => {
-        console.log('Received server public key: ', serverPublicKey);
+      
+      // Handle server public key + Generate shared key
+      socket.on('serverPublicKey', (data) => {
+        console.log('Received server public key: ', data.publicKey);
+        console.log('Key expires at: ', data.expiresAt);
+        const sharedKey = computeSharedKey(clientKeyPair.privateKey, data.publicKey);
+        console.log('Shared Key: ', sharedKey.toString(16));
+        sharedKeyRef.current = sharedKey;
+        sharedKeyRef.expiresAt = new Date(data.expiresAt);
       })
 
-      socket.emit('clientPublicKey', clientKeyPair.publicKey);
-
-      const sharedKey = computeSharedKey(clientKeyPair.privateKey, serverPublicKey);
-      console.log('Shared Key: ', sharedKey.toString(16));
-
-      sharedKeyRef.current = sharedKey
     })
     socket.on('chat message', (msg) => {
       setChat((prevChat) => [...prevChat, msg]);
