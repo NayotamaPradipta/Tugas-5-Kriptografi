@@ -3,7 +3,6 @@ const express = require('express');
 const http = require('http');
 const { Server } = require("socket.io");
 const cors = require('cors');
-const { MongoClient, ServerApiVersion } = require('mongodb');
 const connectDB = require('./db/connectDB');
 const chatController = require('./controllers/chatController');
 const keySessionController = require('./controllers/keyController');
@@ -53,11 +52,12 @@ connectDB().then(() => {
     });
 
     io.on('connection', async (socket) => {
+        console.log('A user connected');
         const userId = socket.handshake.query.userId;
-        const clientPublicKey = socket.handshake.query.clientPublicKey;
-        console.log(`A user connected: ${userId} (${socket.id}) with public key: ${clientPublicKey}`);
         const hasActiveKey = await sharedKeyController.hasActiveSharedKey(userId);
         if (!hasActiveKey) {
+            const clientPublicKey = socket.handshake.query.clientPublicKey;
+            console.log(`A user connected: ${userId} (${socket.id}) with public key: ${clientPublicKey}`);
             const serverKeyPair = generateKeyPair();
             const expiresAt = new Date(Date.now() + 86400000);
             // Send server public key to client
@@ -86,7 +86,7 @@ connectDB().then(() => {
                 }
             })();
         } 
-    
+
         socket.on('disconnect', () => {
             console.log('A user disconnected', socket.id);
         })
