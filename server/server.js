@@ -57,35 +57,40 @@ connectDB().then(() => {
         const userId = socket.handshake.query.userId;
         const hasActiveKey = await sharedKeyController.hasActiveSharedKey(userId);
         if (!hasActiveKey) {
-            const clientPublicKey = socket.handshake.query.clientPublicKey;
-            console.log(`A user connected: ${userId} (${socket.id}) with public key: ${clientPublicKey}`);
-            const serverKeyPair = generateKeyPair();
-            const expiresAt = new Date(Date.now() + 86400000);
-            // Send server public key to client
-            socket.emit('serverPublicKey', {
-                publicKey: serverKeyPair.publicKey,
-                expiresAt: expiresAt.toISOString()
-            });
-            (async () => {
-                try {
-                    console.log('Computing shared key...');
-                    const sharedKey = computeSharedKey(serverKeyPair.privateKey, clientPublicKey);
-                    console.log('Shared Key: ', sharedKey.toString(16));
-        
-                    const sharedKeyData = {
-                        userId: userId,
-                        sessionId: socket.id,
-                        sharedKey: sharedKey.toString(16),
-                        expiresAt: expiresAt,
-                        isActive: true
-                    };
-        
-                    console.log('Saving shared key...');
-                    await sharedKeyController.saveSharedKey(sharedKeyData);
-                } catch (error) {
-                    console.log("Error during shared key computation or saving: ", error);
+            socket.emit('invalidSharedKey');
+            socket.on('acknowledgeInvalidKey', async (ack) => {
+                if (ack === 'cleared') {
+                    const clientPublicKey = socket.handshake.query.clientPublicKey;
+                    console.log(`A user connected: ${userId} (${socket.id}) with public key: ${clientPublicKey}`);
+                    const serverKeyPair = generateKeyPair();
+                    const expiresAt = new Date(Date.now() + 86400000);
+                    // Send server public key to client
+                    socket.emit('serverPublicKey', {
+                        publicKey: serverKeyPair.publicKey,
+                        expiresAt: expiresAt.toISOString()
+                    });
+                    try {
+                        console.log('Computing shared key...');
+                        const sharedKey = computeSharedKey(serverKeyPair.privateKey, clientPublicKey);
+                        console.log('Shared Key: ', sharedKey.toString(16));
+            
+                        const sharedKeyData = {
+                            userId: userId,
+                            sessionId: socket.id,
+                            sharedKey: sharedKey.toString(16),
+                            expiresAt: expiresAt,
+                            isActive: true
+                        };
+            
+                        console.log('Saving shared key...');
+                        await sharedKeyController.updateOrSaveSharedKey(sharedKeyData);
+                    } catch (error) {
+                        console.log("Error during shared key computation or saving: ", error);
+                    }
+                } else {
+                    console.log(`Client ${userId} failed to clear local storage.`);
                 }
-            })();
+            })
         } 
 
         socket.on('sendE2EEPublicKey', (data) => {

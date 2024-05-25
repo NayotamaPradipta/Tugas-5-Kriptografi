@@ -39,6 +39,13 @@ function App(){
       console.log(user);
       connectToServer(user, clientKeyPair);
     }
+    
+    return () => {
+      if (socketRef.current) {
+          socketRef.current.disconnect();
+          console.log('Disconnected from server');
+      }
+    }
   }, []);
 
   const connectToServer = (user, clientKeyPair = null) => {
@@ -68,8 +75,14 @@ function App(){
       const { userId, publicKey } = data; 
       console.log(`Received public key from ${userId}: ${publicKey}`);
       otherUserPublicKeyRef.current[userId] = publicKey;
+    });
 
+    socket.on('invalidSharedKey', () => {
+      console.log('Shared key invalid. Clearing local storage');
+      removeSharedKeyFromLocalStorage(user);
+      socket.emit('acknowledgeInvalidKey', 'cleared');
     })
+
     socket.on('chat message', (msg) => {
       setChat((prevChat) => [...prevChat, msg]);
     });
@@ -124,6 +137,12 @@ function App(){
         console.error("Failed to load keys:", error);
     }
   };
+
+  const removeSharedKeyFromLocalStorage = (userId) => {
+    localStorage.removeItem(`${userId}_sharedKey`);
+    localStorage.removeItem(`${userId}_sharedKeyExpires at`);
+    console.log(`Local storage cleared for user ${userId}`);
+  }
 
   return (
     <div>
