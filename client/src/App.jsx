@@ -12,7 +12,7 @@ function App(){
   const socketRef = useRef(null);
   const sharedKeyRef = useRef(null);
   const e2eeKeysRef = useRef(null);
-
+  const otherUserPublicKeyRef = useRef({});
   useEffect(()=> {
     // Set user
     const port = window.location.port; 
@@ -23,49 +23,63 @@ function App(){
       setUserConfig({username: 'Unknown User'});
     }
 
+    // Check for stored shared key first
     const storedSharedKey = getSharedKeyFromLocalStorage(user);
     if (storedSharedKey && new Date() < new Date(storedSharedKey.expiresAt)) {
       sharedKeyRef.current = storedSharedKey.sharedKey;
       sharedKeyRef.expiresAt = storedSharedKey.expiresAt;
       console.log('Using stored shared key.');
       console.log(`Shared Key ${user}: `, localStorage.getItem(`${user}_sharedKey`));
-    } else {
-      const clientKeyPair = generateKeyPair();
-      const socket = io('http://localhost:3001', {
-        query: { 
-          userId: user,
-          clientPublicKey: clientKeyPair.publicKey
-        }
-      });
-      socketRef.current = socket;
 
-      socket.on('connect', () => {
-        console.log('Connected to server');
-        
-        // Handle server public key + Generate shared key
-        // Pastikan dari awal sharedKey yang di server sama dengan yang di localStorage
-        // Kalo udah ada sharedKey di db, didelete dulu 
+      // Connect to the server without generating new keys
+      connectToServer(user);
+    } else {
+      // Generate a new key pair + connect to server
+      const clientKeyPair = generateKeyPair();
+      console.log(user);
+      connectToServer(user, clientKeyPair);
+    }
+  }, []);
+
+  const connectToServer = (user, clientKeyPair = null) => {
+    const socket = io('http://localhost:3001', {
+      query: clientKeyPair ? { 
+        userId: user,
+        clientPublicKey: clientKeyPair.publicKey
+      } : { userId: user }
+    });
+    socketRef.current = socket;
+
+    socket.on('connect', () => {
+      console.log('Connected to server');
+      if (clientKeyPair) {
         socket.on('serverPublicKey', (data) => {
           console.log('Received server public key: ', data.publicKey);
-          console.log('Key expires at: ', data.expiresAt);
           const sharedKey = computeSharedKey(clientKeyPair.privateKey, data.publicKey);
           console.log('Shared Key: ', sharedKey.toString(16));
           sharedKeyRef.current = sharedKey;
           sharedKeyRef.expiresAt = new Date(data.expiresAt);
           saveSharedKeyToLocalStorage(user, sharedKey, data.expiresAt);
         });
-      });
+      }
+    });
+    // Receive public key from the other client
+    socket.on('exchangePublicKeys', (data) => {
+      const { userId, publicKey } = data; 
+      console.log(`Received public key from ${userId}: ${publicKey}`);
+      otherUserPublicKeyRef.current[userId] = publicKey;
 
-      socket.on('chat message', (msg) => {
-        setChat((prevChat) => [...prevChat, msg]);
-      });
+    })
+    socket.on('chat message', (msg) => {
+      setChat((prevChat) => [...prevChat, msg]);
+    });
 
-      return () => {
-        socket.disconnect();
-      };
-    }
-  }, []);
-
+    return () => {
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+      }
+    };
+  };
   const handleSendMessage = () => {
     if (socketRef.current){
       const messageToSend = `${userConfig.username}: ${message}`;
@@ -96,6 +110,21 @@ function App(){
     console.log('Generated and saved new E2EE keys:', e2eeKeysRef.current);
   };
 
+  const handleFileUpload = async (e) => {
+    try {
+        const keys = await loadECCKeysFromFiles(e);
+        if (keys) {
+            e2eeKeysRef.current = keys;
+            console.log('Loaded E2EE keys:', e2eeKeysRef.current);
+            // Emit the public key to the server after successful load
+            socketRef.current.emit('sendE2EEPublicKey', { publicKey: e2eeKeysRef.current.publicKey });
+            console.log('Emitted E2EE Public Key to server');
+        }
+    } catch (error) {
+        console.error("Failed to load keys:", error);
+    }
+  };
+
   return (
     <div>
       <h1>Welcome, {userConfig.username}</h1>
@@ -120,11 +149,7 @@ function App(){
       <div>
         <h2>Load E2EE Keys</h2>
         <input type="file" multiple onChange={async (e) => {
-          const keys = await loadECCKeysFromFiles(e);
-          if (keys) {
-            e2eeKeysRef.current = keys;
-            console.log('Loaded E2EE keys:', e2eeKeysRef.current);
-          }
+          handleFileUpload(e)
         }} />
       </div>
     </div>

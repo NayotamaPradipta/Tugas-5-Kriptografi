@@ -47,12 +47,13 @@ const io = new Server(server, {
 });
 
 connectDB().then(() => {
+    const userPublicKeys = {};
     server.listen(3001, () => {
         console.log('Server is running on port 3001');
     });
 
     io.on('connection', async (socket) => {
-        console.log('A user connected');
+        console.log('A user connected: ', socket.id);
         const userId = socket.handshake.query.userId;
         const hasActiveKey = await sharedKeyController.hasActiveSharedKey(userId);
         if (!hasActiveKey) {
@@ -86,6 +87,16 @@ connectDB().then(() => {
                 }
             })();
         } 
+
+        socket.on('sendE2EEPublicKey', (data) => {
+            const { publicKey } = data; 
+            userPublicKeys[userId] = publicKey;
+            console.log(`Public key received and stored for user ${userId}`);
+
+            socket.broadcast.emit('exchangePublicKeys', { userId, publicKey})
+            console.log(`Public key from ${userId} broadcasted. `);
+        })
+
 
         socket.on('disconnect', () => {
             console.log('A user disconnected', socket.id);
