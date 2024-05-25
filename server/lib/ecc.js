@@ -41,6 +41,7 @@ function pointAddition(P, Q, p, a) {
 
 // Perkalian poin P di elliptic curve pada GF(p) dengan skalar k
 function scalarMultiplication(k, P, p, a) {
+  k = bigInt(k);
   let R = [null, null];
   let Q = P;
   while (k.isPositive()) {

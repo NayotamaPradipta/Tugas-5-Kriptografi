@@ -13,10 +13,10 @@ encrypt(text, key).then(encrypted => {
   return decrypt(binary_to_base64(encrypted), key); 
 }).then(decrypted => {
   console.log('Decrypted:', decrypted);
-  const base64_decrypted = binary_to_base64(removePadding(decrypted))
-  console.log('Decrypted Base 64: ', base64_decrypted)
-  const utf_string = base64_to_string(base64_decrypted)
-  console.log(utf_string)
+  const base64_decrypted = binary_to_base64(removePadding(decrypted));
+  console.log('Decrypted Base 64: ', base64_decrypted);
+  const utf_string = base64_to_string(base64_decrypted);
+  console.log(utf_string);
 }).catch(error => {
   console.error('Error:', error);
 });
