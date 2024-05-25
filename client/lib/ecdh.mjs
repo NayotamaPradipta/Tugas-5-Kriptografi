@@ -1,4 +1,4 @@
-import { scalarMultiplication } from './ecc.mjs';
+import { scalarMultiplication } from './ecc2.mjs';
 import bigInt from 'big-integer';
 import { BBS } from './bbs.mjs';
 // Parameter dari Kurva secp192r1 (P-192)

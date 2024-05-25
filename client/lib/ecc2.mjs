@@ -1,4 +1,4 @@
-import bigInt from 'big-integer';
+import bigInt from "big-integer";
 // Modular inverse untuk k * k^-1 ≡ 1 (mod p)
 export function modInverse(k, p) {
   if (k.isZero()) throw new Error('error pembagian dengan 0');
