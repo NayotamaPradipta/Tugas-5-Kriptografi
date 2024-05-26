@@ -2,7 +2,8 @@ import { useEffect, useState, useRef } from 'react';
 import io from 'socket.io-client';
 import './App.css';
 import config from './config';
-import { computeSharedKey, generateKeyPair } from '../lib/ecdh.mjs';
+import { computeSharedKey, generateKeyPair as generateECDHKeyPair } from '../lib/ecdh.mjs';
+import { generateKeyPair } from '../lib/elgamal.mjs';
 import { saveECCKeysToFiles, loadECCKeysFromFiles } from '../lib/ECCKey.mjs';
 import CryptoJS from 'crypto-js';
 import { encrypt, decrypt } from '../lib/elgamal.mjs';
@@ -43,7 +44,7 @@ function App(){
       connectToServer(user);
     } else {
       // Generate a new key pair + connect to server
-      const clientKeyPair = generateKeyPair();
+      const clientKeyPair = generateECDHKeyPair();
       console.log("This user is : ", user);
       connectToServer(user, clientKeyPair);
     }
@@ -167,9 +168,9 @@ function App(){
   };
 
   const handleGenerateAndSaveKeys = () => {
-    const { publicKey, privateKey } = generateKeyPair();
-    e2eeKeysRef.current = { publicKey, privateKey };
-    saveECCKeysToFiles(userConfig.username, publicKey, privateKey);
+    const keys = generateKeyPair();
+    e2eeKeysRef.current = { publicKey: keys[1], privateKey: keys[0] };
+    saveECCKeysToFiles(userConfig.username, e2eeKeysRef.current.publicKey, e2eeKeysRef.current.privateKey);
     console.log('Generated and saved new E2EE keys:', e2eeKeysRef.current);
   };
 
