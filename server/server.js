@@ -110,12 +110,12 @@ connectDB().then(() => {
             const bytes = CryptoJS.AES.decrypt(msg, sharedKey);
             console.log(bytes.toString(CryptoJS.enc.Utf8))
             const decryptedBody = JSON.parse(bytes.toString(CryptoJS.enc.Utf8));
-
+            console.log('Decrypted body: ', decryptedBody);
             // Encrypt with shared key server + receiver
             const sharedKeyDataReceiver = await sharedKeyController.getSharedKey(decryptedBody.receiver);
             const sharedKeyReceiver = sharedKeyDataReceiver.sharedKey;
             const encryptedBody = CryptoJS.AES.encrypt(JSON.stringify(decryptedBody), sharedKeyReceiver).toString();
-
+            console.log(encryptedBody);
             socket.broadcast.emit('chat message', encryptedBody);
         })
     })

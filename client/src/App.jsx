@@ -93,17 +93,21 @@ function App(){
     })
 
     socket.on('chat message', (msg) => {
-      const { message, sender, receiver, isSigned, sessionId} = msg;
-
+      console.log("Received Message: ", msg);
       // Decrypt body message with shared Key
       const sharedKey = sharedKeyRef.current;
-      const bytes = CryptoJS.AES.decrypt(message, sharedKey.toString(16));
+      console.log(sharedKey);
+      console.log(typeof(msg));
+      const bytes = CryptoJS.AES.decrypt(msg, sharedKey.toString(16));
+      console.log('Bytes: ', bytes);
       const decryptedBody = JSON.parse(bytes.toString(CryptoJS.enc.Utf8));
-
+      console.log('Decrypted Body: ', decryptedBody);
       // Decrypt inner key using user's private message
       const encryptedInnerMessage = decryptedBody.message;
+      console.log(encryptedInnerMessage);
       const transformedDecryptedOuter = convertStringToCipher(encryptedInnerMessage);
-      const decryptedInner = decrypt(e2eeKeysRef.current.privateKey, transformedDecryptedOuter);
+      console.log(transformedDecryptedOuter);
+      const decryptedInner = decrypt(BigInt(e2eeKeysRef.current.privateKey), transformedDecryptedOuter);
       
 
       setChat((prevChat) => [...prevChat, `${decryptedBody.sender}: ${decryptedInner}`]);
@@ -118,7 +122,7 @@ function App(){
   const handleSendMessage = () => {
     if (socketRef.current){
       const messageToSend = message;
-      const receiverName = userConfig.username === 'alice' ? 'bob' : 'alice';
+      const receiverName = userConfig.username.toLowerCase() === 'alice' ? 'bob' : 'alice';
       let receiverPublicKey = Object.values(otherUserPublicKeyRef.current)[0];
       if (!receiverPublicKey) {
         console.error('Receiver public key not found');
@@ -130,7 +134,7 @@ function App(){
       const transformedEncryptedInnerMessage = convertCipherToString(encryptedInnerMessage);
 
       const bodyRequest = {
-        sender: userConfig.username,
+        sender: userConfig.username.toLowerCase(),
         receiver: receiverName,
         message: transformedEncryptedInnerMessage,
         isSigned: false, 
@@ -144,7 +148,7 @@ function App(){
 
       socketRef.current.emit('chat message', encryptedBody);
       setMessage('');
-      setChat((prevChat) => [...prevChat, messageToSend]);
+      setChat((prevChat) => [...prevChat, `${userConfig.username.toLowerCase()}: ${messageToSend}`]);
     }
   }
 
