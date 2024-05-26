@@ -9,7 +9,7 @@ import { saveSchnorrKeysToFiles, loadSchnorrKeysFromFiles } from '../lib/Schnorr
 import CryptoJS from 'crypto-js';
 import { encrypt, decrypt } from '../lib/elgamal.mjs';
 import { convertCipherToString, convertStringToCipher } from '../lib/helper.mjs';
-import { generatePrivateKey, generatePublicKey } from '../lib/schnorr.mjs';
+import { generatePrivateKey, generatePublicKey, generate_DS } from '../lib/schnorr.mjs';
 import bigInt from 'big-integer';
 function convertPublicKeyToBigInt(publicKeyString) {
   const [x, y] = publicKeyString.split(',');
@@ -26,6 +26,7 @@ function App(){
   const schnorrKeysRef = useRef(null);
   const otherUserPublicKeyRef = useRef({});
   const otherSchnorrPublicKeyRef = useRef({});
+  const globalSchnorrKey = useRef({});
   useEffect(()=> {
     // Set user
     const port = window.location.port; 
@@ -164,6 +165,50 @@ function App(){
     }
   }
 
+  const handleSendMessageWithSign = () => {
+    if (socketRef.current){
+      socketRef.current.emit('requestSchnorrParameters');
+      socketRef.current.on('receiveSchnorrParameters', (params) => {
+        const { p, q, alpha } = params;
+        globalSchnorrKey.current.p = bigInt(p);
+        globalSchnorrKey.current.q = bigInt(q);
+        globalSchnorrKey.current.alpha = bigInt(alpha);
+        const messageToSend = message;
+        const receiverName = userConfig.username.toLowerCase() === 'alice' ? 'bob' : 'alice';
+        let receiverPublicKey = Object.values(otherUserPublicKeyRef.current)[0];
+        if (!receiverPublicKey) {
+          console.error('Receiver public key not found');
+          return;
+        }
+        receiverPublicKey = convertPublicKeyToBigInt(receiverPublicKey);
+        console.log(receiverPublicKey);
+        const encryptedInnerMessage = encrypt(receiverPublicKey, messageToSend);
+        const transformedEncryptedInnerMessage = convertCipherToString(encryptedInnerMessage);
+        const dSigned = generate_DS(messageToSend, bigInt(schnorrKeysRef.current.privateKey), globalSchnorrKey.current.p, globalSchnorrKey.current.q, globalSchnorrKey.current.alpha);
+  
+        const bodyRequest = {
+          sender: userConfig.username.toLowerCase(),
+          receiver: receiverName,
+          message: transformedEncryptedInnerMessage,
+          isSigned: true, 
+          sessionId: socketRef.current.id,
+          dSigned: dSigned
+        }
+  
+        const sharedKey = sharedKeyRef.current;
+        console.log("Shared Key: ", sharedKey);
+        const encryptedBody = CryptoJS.AES.encrypt(JSON.stringify(bodyRequest), sharedKey.toString(16)).toString();
+        console.log(encryptedBody);
+  
+        socketRef.current.emit('chat message', encryptedBody);
+        setMessage('');
+        setChat((prevChat) => [...prevChat, `${userConfig.username.toLowerCase()}: ${messageToSend}`]);
+      })
+
+    }
+  }
+
+
   const saveSharedKeyToLocalStorage = (userId, sharedKey, expiresAt) => {
     localStorage.setItem(`${userId}_sharedKey`, sharedKey.toString());
     localStorage.setItem(`${userId}_sharedKeyExpiresAt`, expiresAt.toString());
@@ -211,10 +256,13 @@ function App(){
 
     socketRef.current.once('receiveSchnorrParameters', (params) => {
       const {p, q, alpha} = params; 
+      globalSchnorrKey.current.p = bigInt(p);
+      globalSchnorrKey.current.q = bigInt(q);
+      globalSchnorrKey.current.alpha = bigInt(alpha);
       console.log("Received Schnorr parameters: ", params);
 
-      const privateKey = generatePrivateKey(bigInt(q));
-      const publicKey = generatePublicKey(privateKey, bigInt(p), bigInt(alpha));
+      const privateKey = generatePrivateKey(q);
+      const publicKey = generatePublicKey(privateKey, p, alpha);
       console.log('Private Key: ', privateKey);
       console.log(publicKey);
       schnorrKeysRef.current = { publicKey: publicKey, privateKey: privateKey};
@@ -253,6 +301,7 @@ function App(){
         placeholder="Type a message..."
       />
       <button onClick={handleSendMessage}>Send</button>
+      <button onClick={handleSendMessageWithSign}>Send (Signed)</button>
       <div>
         <h2>Save E2EE Keys</h2>
         <button onClick={handleGenerateAndSaveKeys}>
