@@ -26,6 +26,7 @@ const io = new Server(server, {
 
 connectDB().then(() => {
     const userPublicKeys = {};
+    const schnorrPublicKeys = {};
     const schnorrParam = generateGlobalPublicKey();
     server.listen(3001, () => {
         console.log('Server is running on port 3001');
@@ -85,12 +86,21 @@ connectDB().then(() => {
         } 
 
         socket.on('sendE2EEPublicKey', (data) => {
+            
             const { publicKey } = data; 
             userPublicKeys[userId] = publicKey;
             console.log(`Public key received and stored for user ${userId}`);
 
             socket.broadcast.emit('exchangePublicKeys', { userId, publicKey})
             console.log(`Public key from ${userId} broadcasted. `);
+        })
+
+        socket.on('sendSchnorrPublicKey', (data) => {
+            const { publicKey } = data; 
+            schnorrPublicKeys[userId] = publicKey;
+            console.log(`Public key received and stored for user ${userId}`);
+            socket.broadcast.emit('exchangeSchnorr', {userId, publicKey })
+            console.log(`Public Schnorr key from ${userId} broadcasted. `);
         })
 
         socket.on('requestSchnorrParameters', () => {

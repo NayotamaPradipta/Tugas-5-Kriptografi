@@ -25,6 +25,7 @@ function App(){
   const e2eeKeysRef = useRef(null);
   const schnorrKeysRef = useRef(null);
   const otherUserPublicKeyRef = useRef({});
+  const otherSchnorrPublicKeyRef = useRef({});
   useEffect(()=> {
     // Set user
     const port = window.location.port; 
@@ -89,6 +90,13 @@ function App(){
       console.log(`Received public key from ${userId}: ${publicKey}`);
       otherUserPublicKeyRef.current[userId] = publicKey;
     });
+
+    socket.on('exchangeSchnorr', (data) => {
+      const { userId, publicKey } = data; 
+      console.log(`Received Schnorr key from ${userId}: ${publicKey}`);
+      otherSchnorrPublicKeyRef.current[userId] = publicKey;
+    });
+
 
     socket.on('invalidSharedKey', () => {
       console.log('Shared key invalid. Clearing local storage');
@@ -216,7 +224,18 @@ function App(){
   };
 
   const handleUploadSchnorr = async (e) => {
-
+    try {
+      const keys = await loadSchnorrKeysFromFiles(e);
+      if (keys) {
+          schnorrKeysRef.current = keys;
+          console.log('Loaded Schnorr keys:', schnorrKeysRef.current);
+          // Emit the public key to the server after successful load
+          socketRef.current.emit('sendSchnorrPublicKey', { publicKey: schnorrKeysRef.current.publicKey });
+          console.log('Emitted Schnorr Public Key to server');
+      }
+    } catch (error) {
+      console.error("Failed to load keys:", error);
+    }
   };
 
   return (
@@ -243,7 +262,7 @@ function App(){
       <div>
         <h2>Save Schnorr Keys</h2>
         <button onClick={handleGenerateAndSaveKeys}>
-          Generate and Save Keys
+          Generate and Save ECC Keys
         </button>
       </div>
       <div>
@@ -255,11 +274,11 @@ function App(){
       <div>
         <h2>Save Schnorr Keys</h2>
         <button onClick={handleSchnorr}>
-          Generate and Save Keys
+          Generate and Save Schnorr Keys
         </button>
       </div>
       <div>
-        <h2>Load E2EE Keys</h2>
+        <h2>Load Schnorr Keys</h2>
         <input type="file" multiple onChange={async (e) => {
           handleUploadSchnorr(e)
         }} />
