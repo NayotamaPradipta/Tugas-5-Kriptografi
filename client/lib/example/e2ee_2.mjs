@@ -7,13 +7,13 @@ const keypairAlice = generateECDHKeyPair()
 const keypairBob = generateECDHKeyPair()
 const keyPairServer = generateECDHKeyPair()
 
-const sharedKeyAliceServer = computeSharedKey(keypairAlice.privateKey, keyPairServer.publicKey);
-const sharedKeyServerAlice = computeSharedKey(keyPairServer.privateKey, keypairAlice.publicKey);
-const sharedKeyServerBob = computeSharedKey(keyPairServer.privateKey, keypairBob.publicKey);
-const sharedKeyBobServer = computeSharedKey(keypairBob.privateKey, keyPairServer.publicKey);
-
+const test = computeSharedKey(keypairAlice.privateKey, keyPairServer.publicKey);
+let sharedKeyServerAlice = '5012706585773304299494667391592626557327236415116502268688'
+let sharedKeyAliceServer = '5643156490685651858694861461958388076270112876890334873567'
+let sharedKeyServerBob = '2862242940817484767931829385537693569183906934583203588829'
+let sharedKeyBobServer = '643667461031370342458712022835015203972382083415692159932'
+console.log(test);
 console.log(sharedKeyAliceServer);
-console.log(sharedKeyServerAlice);
 
 const plaintext = "SUSAH JIR";
 

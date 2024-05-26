@@ -9,30 +9,8 @@ const keySessionController = require('./controllers/keyController');
 const sharedKeyController = require('./controllers/sharedKeyController');
 const { generateKeyPair, computeSharedKey } = require('./lib/ecdh');
 const exp = require('constants');
-
-const sampleMessageData = {
-    senderId: "Alice",
-    receiverId: "Bob",
-    encryptedMessage: "<Encrypted_Content>",
-    sessionId: "session_1"
-};
-
-const sampleKeyData = {
-    userId: "Alice",
-    sessionId: "session_1",
-    publicKey: "ABCD",
-    privateKey: "EFGH",
-    createdAt: new Date().getTime(),
-    expiresAt: new Date(new Date().getTime() + (24 * 60 * 60 * 1000))
-};
-
-// connectDB().then(() => {
-//     chatController.saveChatMessage(sampleMessageData)
-//     .then(() => {
-//         keySessionController.saveKeySession(sampleKeyData)
-//     })
-    
-// })
+const CryptoJS = require('crypto-js');
+const { type } = require('os');
 
 const app = express();
 app.use(cors());
@@ -53,25 +31,37 @@ connectDB().then(() => {
     });
 
     io.on('connection', async (socket) => {
-        console.log('A user connected: ', socket.id);
+        
         const userId = socket.handshake.query.userId;
+        console.log('A user connected: ', socket.id, 'userId: ', userId);
         const hasActiveKey = await sharedKeyController.hasActiveSharedKey(userId);
         if (!hasActiveKey) {
             socket.emit('invalidSharedKey');
             socket.on('acknowledgeInvalidKey', async (ack) => {
                 if (ack === 'cleared') {
-                    const clientPublicKey = socket.handshake.query.clientPublicKey;
+                    let clientPublicKey = socket.handshake.query.clientPublicKey;
+                    console.log(typeof(clientPublicKey));
+                    if (clientPublicKey){
+                        clientPublicKey = clientPublicKey.split(',').map(component => component.trim());
+                    }
+                    
                     console.log(`A user connected: ${userId} (${socket.id}) with public key: ${clientPublicKey}`);
                     const serverKeyPair = generateKeyPair();
+                    console.log("Server Public Key: ", serverKeyPair.publicKey);
+                    console.log("Server Private key: ", serverKeyPair.privateKey);
                     const expiresAt = new Date(Date.now() + 86400000);
                     // Send server public key to client
                     socket.emit('serverPublicKey', {
-                        publicKey: serverKeyPair.publicKey,
+                        publicKey: [serverKeyPair.publicKey[0].toString(), serverKeyPair.publicKey[1].toString()],
                         expiresAt: expiresAt.toISOString()
                     });
                     try {
                         console.log('Computing shared key...');
-                        const sharedKey = computeSharedKey(serverKeyPair.privateKey, clientPublicKey);
+                        console.log('Server Private Key (TRY): ', serverKeyPair.privateKey.toString());
+                        console.log('Client Public Key: ', clientPublicKey);
+                        console.log('Client Public Key: ', clientPublicKey[0]);
+                        console.log('Client Public Key: ', clientPublicKey[1]);
+                        const sharedKey = computeSharedKey(serverKeyPair.privateKey.toString(), clientPublicKey);
                         console.log('Shared Key: ', sharedKey.toString(16));
             
                         const sharedKeyData = {
@@ -106,9 +96,27 @@ connectDB().then(() => {
         socket.on('disconnect', () => {
             console.log('A user disconnected', socket.id);
         })
-        socket.on('chat message', (msg) => {
+        socket.on('chat message', async (msg) => {
             console.log('message:', msg);
-            socket.broadcast.emit('chat message', msg);
+            console.log(userId);
+            const sharedKeyData = await sharedKeyController.getSharedKey(userId);
+            if (!sharedKeyData) {
+                // socket.emit('invalidSharedKey');
+                return;
+            }
+            const sharedKey = sharedKeyData.sharedKey;
+            console.log(sharedKey);
+            // Decrypt with shared key server + sender
+            const bytes = CryptoJS.AES.decrypt(msg, sharedKey);
+            console.log(bytes.toString(CryptoJS.enc.Utf8))
+            const decryptedBody = JSON.parse(bytes.toString(CryptoJS.enc.Utf8));
+
+            // Encrypt with shared key server + receiver
+            const sharedKeyDataReceiver = await sharedKeyController.getSharedKey(decryptedBody.receiver);
+            const sharedKeyReceiver = sharedKeyDataReceiver.sharedKey;
+            const encryptedBody = CryptoJS.AES.encrypt(JSON.stringify(decryptedBody), sharedKeyReceiver).toString();
+
+            socket.broadcast.emit('chat message', encryptedBody);
         })
     })
 }).catch(err => {

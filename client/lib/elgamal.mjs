@@ -1,6 +1,6 @@
 import { pointAddition, scalarMultiplication } from './ecc1.mjs';
 import { computePoints } from './encoder.mjs';
-import { webcrypto } from 'crypto';
+// import { webcrypto } from 'crypto';
 // Parameter dari Kurva secp192r1 (P-192)
 const p  = BigInt('0xfffffffffffffffffffffffffffffffeffffffffffffffff');
 const a  = BigInt('0xfffffffffffffffffffffffffffffffefffffffffffffffc');
@@ -13,7 +13,7 @@ const validPoints = computePoints();
 
 function getRandomBytes(length) {
   const array = new Uint8Array(length);
-  webcrypto.getRandomValues(array);
+  window.crypto.getRandomValues(array);
   return array;
 }
 

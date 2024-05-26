@@ -27,13 +27,31 @@ exports.updateOrSaveSharedKey = async function(data) {
     }
 }
 
-exports.hasActiveSharedKey = async function(userId){
+exports.hasActiveSharedKey = async function(userId) {
     try {
         const now = new Date();
-        const sharedKey = await SharedKey.exists({userId: userId, expiresAt: { $gt: now} });
-        return sharedKey != null;
+        const sharedKey = await SharedKey.findOne({ userId: userId });
+        if (sharedKey && new Date(sharedKey.expiresAt) > now) {
+            return true;
+        }
+        return false;
     } catch (error) {
-        console.error("Error checking for active shared key: ", error)
+        console.error("Error checking for active shared key: ", error);
         return false;
     }
-}
+};
+
+
+exports.getSharedKey = async function(userId) {
+    try {
+        const sharedKey = await SharedKey.findOne({ userId: userId });
+        if (sharedKey && new Date(sharedKey.expiresAt) > new Date()) {
+            return sharedKey;
+        } else {
+            return null;
+        }
+    } catch (error) {
+        console.error("Error retrieving shared key: ", error);
+        throw error;
+    }
+};

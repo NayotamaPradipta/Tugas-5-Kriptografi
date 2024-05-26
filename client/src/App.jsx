@@ -4,6 +4,14 @@ import './App.css';
 import config from './config';
 import { computeSharedKey, generateKeyPair } from '../lib/ecdh.mjs';
 import { saveECCKeysToFiles, loadECCKeysFromFiles } from '../lib/ECCKey.mjs';
+import CryptoJS from 'crypto-js';
+import { encrypt, decrypt } from '../lib/elgamal.mjs';
+import { convertCipherToString, convertStringToCipher } from '../lib/helper.mjs';
+
+function convertPublicKeyToBigInt(publicKeyString) {
+  const [x, y] = publicKeyString.split(',');
+  return [BigInt(x), BigInt(y)];
+}
 
 function App(){
   const [userConfig, setUserConfig] = useState({username: 'Loading...'});
@@ -36,7 +44,7 @@ function App(){
     } else {
       // Generate a new key pair + connect to server
       const clientKeyPair = generateKeyPair();
-      console.log(user);
+      console.log("This user is : ", user);
       connectToServer(user, clientKeyPair);
     }
     
@@ -62,6 +70,7 @@ function App(){
       if (clientKeyPair) {
         socket.on('serverPublicKey', (data) => {
           console.log('Received server public key: ', data.publicKey);
+          console.log('Client Private Key: ', clientKeyPair.privateKey);
           const sharedKey = computeSharedKey(clientKeyPair.privateKey, data.publicKey);
           console.log('Shared Key: ', sharedKey.toString(16));
           sharedKeyRef.current = sharedKey;
@@ -84,7 +93,20 @@ function App(){
     })
 
     socket.on('chat message', (msg) => {
-      setChat((prevChat) => [...prevChat, msg]);
+      const { message, sender, receiver, isSigned, sessionId} = msg;
+
+      // Decrypt body message with shared Key
+      const sharedKey = sharedKeyRef.current;
+      const bytes = CryptoJS.AES.decrypt(message, sharedKey.toString(16));
+      const decryptedBody = JSON.parse(bytes.toString(CryptoJS.enc.Utf8));
+
+      // Decrypt inner key using user's private message
+      const encryptedInnerMessage = decryptedBody.message;
+      const transformedDecryptedOuter = convertStringToCipher(encryptedInnerMessage);
+      const decryptedInner = decrypt(e2eeKeysRef.current.privateKey, transformedDecryptedOuter);
+      
+
+      setChat((prevChat) => [...prevChat, `${decryptedBody.sender}: ${decryptedInner}`]);
     });
 
     return () => {
@@ -95,8 +117,32 @@ function App(){
   };
   const handleSendMessage = () => {
     if (socketRef.current){
-      const messageToSend = `${userConfig.username}: ${message}`;
-      socketRef.current.emit('chat message', messageToSend);
+      const messageToSend = message;
+      const receiverName = userConfig.username === 'alice' ? 'bob' : 'alice';
+      let receiverPublicKey = Object.values(otherUserPublicKeyRef.current)[0];
+      if (!receiverPublicKey) {
+        console.error('Receiver public key not found');
+        return;
+      }
+      receiverPublicKey = convertPublicKeyToBigInt(receiverPublicKey);
+      console.log(receiverPublicKey);
+      const encryptedInnerMessage = encrypt(receiverPublicKey, messageToSend);
+      const transformedEncryptedInnerMessage = convertCipherToString(encryptedInnerMessage);
+
+      const bodyRequest = {
+        sender: userConfig.username,
+        receiver: receiverName,
+        message: transformedEncryptedInnerMessage,
+        isSigned: false, 
+        sessionId: socketRef.current.id
+      }
+
+      const sharedKey = sharedKeyRef.current;
+      console.log("Shared Key: ", sharedKey);
+      const encryptedBody = CryptoJS.AES.encrypt(JSON.stringify(bodyRequest), sharedKey.toString(16)).toString();
+      console.log(encryptedBody);
+
+      socketRef.current.emit('chat message', encryptedBody);
       setMessage('');
       setChat((prevChat) => [...prevChat, messageToSend]);
     }
