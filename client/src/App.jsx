@@ -9,7 +9,7 @@ import { saveSchnorrKeysToFiles, loadSchnorrKeysFromFiles } from '../lib/Schnorr
 import CryptoJS from 'crypto-js';
 import { encrypt, decrypt } from '../lib/elgamal.mjs';
 import { convertCipherToString, convertStringToCipher } from '../lib/helper.mjs';
-import { generatePrivateKey, generatePublicKey, generate_DS } from '../lib/schnorr.mjs';
+import { generatePrivateKey, generatePublicKey, generate_DS, verify_DS } from '../lib/schnorr.mjs';
 import bigInt from 'big-integer';
 function convertPublicKeyToBigInt(publicKeyString) {
   const [x, y] = publicKeyString.split(',');
@@ -21,6 +21,7 @@ function App(){
   const [message, setMessage] = useState('');
   const [chat, setChat] = useState([]);
   const [digitalSignature, setDigitalSignature] = useState('');
+  const [verificationResult, setVerificationResult] = useState('');
   const socketRef = useRef(null);
   const sharedKeyRef = useRef(null);
   const e2eeKeysRef = useRef(null);
@@ -28,6 +29,8 @@ function App(){
   const otherUserPublicKeyRef = useRef({});
   const otherSchnorrPublicKeyRef = useRef({});
   const globalSchnorrKey = useRef({});
+  const lastMessage = useRef('');
+  const lastSignature = useRef('');
   useEffect(()=> {
     // Set user
     const port = window.location.port; 
@@ -96,6 +99,7 @@ function App(){
     socket.on('exchangeSchnorr', (data) => {
       const { userId, publicKey } = data; 
       console.log(`Received Schnorr key from ${userId}: ${publicKey}`);
+      console.log(userId);
       otherSchnorrPublicKeyRef.current[userId] = publicKey;
     });
 
@@ -107,32 +111,34 @@ function App(){
     })
 
     socket.on('chat message', (msg) => {
-      console.log("Received Message: ", msg);
-      // Decrypt body message with shared Key
-      const sharedKey = sharedKeyRef.current;
-      console.log(sharedKey);
-      console.log(typeof(msg));
-      const bytes = CryptoJS.AES.decrypt(msg, sharedKey.toString(16));
-      console.log('Bytes: ', bytes);
-      const decryptedBody = JSON.parse(bytes.toString(CryptoJS.enc.Utf8));
-      console.log('Decrypted Body: ', decryptedBody);
+        // Decrypt body message with shared Key
+        const sharedKey = sharedKeyRef.current;
+        console.log(sharedKey);
+        console.log(typeof(msg));
+        const bytes = CryptoJS.AES.decrypt(msg, sharedKey.toString(16));
+        console.log('Bytes: ', bytes);
+        const decryptedBody = JSON.parse(bytes.toString(CryptoJS.enc.Utf8));
+        console.log('Decrypted Body: ', decryptedBody);
+  
+        if (decryptedBody.isSigned) {
+          const signatureDisplay = `e: ${decryptedBody.dSigned.e}, y: ${decryptedBody.dSigned.y}`;
+          setDigitalSignature(signatureDisplay);
+          lastSignature.current = { e: decryptedBody.dSigned.e, y: decryptedBody.dSigned.y}
+        } else {
+          setDigitalSignature('');
+        }
+  
+        // Decrypt inner key using user's private message
+        const encryptedInnerMessage = decryptedBody.message;
+        console.log(encryptedInnerMessage);
+        const transformedDecryptedOuter = convertStringToCipher(encryptedInnerMessage);
+        console.log(transformedDecryptedOuter);
+        const decryptedInner = decrypt(BigInt(e2eeKeysRef.current.privateKey), transformedDecryptedOuter);
+        lastMessage.current = decryptedInner;
+  
+        setChat((prevChat) => [...prevChat, `${decryptedBody.sender}: ${decryptedInner}`]);
 
-      if (decryptedBody.isSigned) {
-        const signatureDisplay = `e: ${decryptedBody.dSigned.e}, y: ${decryptedBody.dSigned.y}`;
-        setDigitalSignature(signatureDisplay);
-      } else {
-        setDigitalSignature('');
-      }
 
-      // Decrypt inner key using user's private message
-      const encryptedInnerMessage = decryptedBody.message;
-      console.log(encryptedInnerMessage);
-      const transformedDecryptedOuter = convertStringToCipher(encryptedInnerMessage);
-      console.log(transformedDecryptedOuter);
-      const decryptedInner = decrypt(BigInt(e2eeKeysRef.current.privateKey), transformedDecryptedOuter);
-      
-
-      setChat((prevChat) => [...prevChat, `${decryptedBody.sender}: ${decryptedInner}`]);
     });
 
     return () => {
@@ -295,6 +301,14 @@ function App(){
     }
   };
 
+  const verifySchnorr = () => {
+    let userId = userConfig.username.toLowerCase() === 'alice' ? 'bob' : 'alice';
+    const eBigInt = bigInt(lastSignature.current.e);
+    const yBigInt = bigInt(lastSignature.current.y);
+    const result = verify_DS(lastMessage.current, { e: eBigInt, y: yBigInt }, bigInt(otherSchnorrPublicKeyRef.current[userId]), bigInt(globalSchnorrKey.current.p), bigInt(globalSchnorrKey.current.alpha))
+    setVerificationResult(result ? "true" : "false");
+  }
+
   return (
     <div>
       <h1>Welcome, {userConfig.username}</h1>
@@ -319,7 +333,7 @@ function App(){
       </div>
       <div>
         <h2>Save Schnorr Keys</h2>
-        <button onClick={handleGenerateAndSaveKeys}>
+        <button onClick={handleSchnorr}>
           Generate and Save ECC Keys
         </button>
       </div>
@@ -345,7 +359,11 @@ function App(){
         <h2>Digital Signature</h2>
         <p>{digitalSignature} </p>
       </div>
-      
+      <div>
+        <button onClick={verifySchnorr}>
+          Verify Digital Signature
+        </button>
+      </div>
     </div>
   );
 }
