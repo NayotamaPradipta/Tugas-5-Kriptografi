@@ -310,57 +310,89 @@ function App(){
   }
 
   return (
-    <div>
-      <h1>Welcome, {userConfig.username}</h1>
-      <div>
-        {chat.map((msg, index) => (
-          <p key={index}>{msg}</p>  
-        ))}
+    <div className="min-h-screen bg-gray-100 flex flex-col items-center p-6">
+      <h1 className="text-3xl font-bold mb-6">Welcome, {userConfig.username}</h1>
+      
+      <div className="bg-white p-6 rounded shadow-md w-full max-w-lg mb-6">
+        <h2 className="text-xl font-semibold mb-4">Chat</h2>
+        <div className="space-y-2 mb-4 max-h-96 overflow-y-auto">
+          {chat.map((msg, index) => (
+            <p key={index} className="p-2 bg-gray-200 rounded">{msg}</p>  
+          ))}
+        </div>
+        <div className="flex space-x-2 mb-4">
+          <input
+            type="text"
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            placeholder="Type a message..."
+            className="flex-grow p-2 border border-gray-300 rounded"
+          />
+          <button
+            onClick={handleSendMessage}
+            className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+          >
+            Send
+          </button>
+          <button
+            onClick={handleSendMessageWithSign}
+            className="bg-indigo-500 text-white px-4 py-2 rounded hover:bg-indigo-600"
+          >
+            Send (Signed)
+          </button>
+        </div>
       </div>
-      <input
-        type="text"
-        value={message}
-        onChange={(e) => setMessage(e.target.value)}
-        placeholder="Type a message..."
-      />
-      <button onClick={handleSendMessage}>Send</button>
-      <button onClick={handleSendMessageWithSign}>Send (Signed)</button>
-      <div>
-        <h2>Save E2EE Keys</h2>
-        <button onClick={handleGenerateAndSaveKeys}>
+
+      <div className="bg-white p-6 rounded shadow-md w-full max-w-lg mb-6">
+        <h2 className="text-xl font-semibold mb-4">Save E2EE Keys</h2>
+        <button
+          onClick={handleGenerateAndSaveKeys}
+          className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
+        >
           Generate and Save Keys
         </button>
       </div>
-      <div>
-        <h2>Save Schnorr Keys</h2>
-        <button onClick={handleSchnorr}>
+      
+      <div className="bg-white p-6 rounded shadow-md w-full max-w-lg mb-6">
+        <h2 className="text-xl font-semibold mb-4">Save Schnorr Keys</h2>
+        <button
+          onClick={handleSchnorr}
+          className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
+        >
           Generate and Save ECC Keys
         </button>
       </div>
-      <div>
-        <h2>Load E2EE Keys</h2>
-        <input type="file" multiple onChange={async (e) => {
-          handleFileUpload(e)
-        }} />
+
+      <div className="bg-white p-6 rounded shadow-md w-full max-w-lg mb-6">
+        <h2 className="text-xl font-semibold mb-4">Load E2EE Keys</h2>
+        <input
+          type="file"
+          multiple
+          onChange={async (e) => handleFileUpload(e)}
+          className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+        />
       </div>
-      <div>
-        <h2>Save Schnorr Keys</h2>
-        <button onClick={handleSchnorr}>
-          Generate and Save Schnorr Keys
-        </button>
+
+      <div className="bg-white p-6 rounded shadow-md w-full max-w-lg mb-6">
+        <h2 className="text-xl font-semibold mb-4">Load Schnorr Keys</h2>
+        <input
+          type="file"
+          multiple
+          onChange={async (e) => handleUploadSchnorr(e)}
+          className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+        />
       </div>
-      <div>
-        <h2>Load Schnorr Keys</h2>
-        <input type="file" multiple onChange={async (e) => {
-          handleUploadSchnorr(e)
-        }} />
+
+      <div className="bg-white p-6 rounded shadow-md w-full max-w-lg mb-6">
+        <h2 className="text-xl font-semibold mb-4">Digital Signature</h2>
+        <p className="p-2 bg-gray-200 rounded max-h-96 overflow-y-auto">{digitalSignature}</p>
       </div>
-      <div>
-        <h2>Digital Signature</h2>
-        <p>{digitalSignature} </p>
-      </div>
-      <div>
-        <button onClick={verifySchnorr}>
+
+      <div className="bg-white p-6 rounded shadow-md w-full max-w-lg mb-6">
+        <button
+          onClick={verifySchnorr}
+          className="bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600"
+        >
           Verify Digital Signature
         </button>
       </div>
