@@ -5,10 +5,12 @@ import config from './config';
 import { computeSharedKey, generateKeyPair as generateECDHKeyPair } from '../lib/ecdh.mjs';
 import { generateKeyPair } from '../lib/elgamal.mjs';
 import { saveECCKeysToFiles, loadECCKeysFromFiles } from '../lib/ECCKey.mjs';
+import { saveSchnorrKeysToFiles, loadSchnorrKeysFromFiles } from '../lib/SchnorrKey.mjs';
 import CryptoJS from 'crypto-js';
 import { encrypt, decrypt } from '../lib/elgamal.mjs';
 import { convertCipherToString, convertStringToCipher } from '../lib/helper.mjs';
-
+import { generatePrivateKey, generatePublicKey } from '../lib/schnorr.mjs';
+import bigInt from 'big-integer';
 function convertPublicKeyToBigInt(publicKeyString) {
   const [x, y] = publicKeyString.split(',');
   return [BigInt(x), BigInt(y)];
@@ -21,6 +23,7 @@ function App(){
   const socketRef = useRef(null);
   const sharedKeyRef = useRef(null);
   const e2eeKeysRef = useRef(null);
+  const schnorrKeysRef = useRef(null);
   const otherUserPublicKeyRef = useRef({});
   useEffect(()=> {
     // Set user
@@ -195,6 +198,27 @@ function App(){
     console.log(`Local storage cleared for user ${userId}`);
   }
 
+  const handleSchnorr = () => {
+    socketRef.current.emit('requestSchnorrParameters');
+
+    socketRef.current.once('receiveSchnorrParameters', (params) => {
+      const {p, q, alpha} = params; 
+      console.log("Received Schnorr parameters: ", params);
+
+      const privateKey = generatePrivateKey(bigInt(q));
+      const publicKey = generatePublicKey(privateKey, bigInt(p), bigInt(alpha));
+      console.log('Private Key: ', privateKey);
+      console.log(publicKey);
+      schnorrKeysRef.current = { publicKey: publicKey, privateKey: privateKey};
+      saveSchnorrKeysToFiles(userConfig.username, publicKey, privateKey);
+      console.log("Schnorr keys saved: ", schnorrKeysRef.current);
+    })
+  };
+
+  const handleUploadSchnorr = async (e) => {
+
+  };
+
   return (
     <div>
       <h1>Welcome, {userConfig.username}</h1>
@@ -217,9 +241,27 @@ function App(){
         </button>
       </div>
       <div>
+        <h2>Save Schnorr Keys</h2>
+        <button onClick={handleGenerateAndSaveKeys}>
+          Generate and Save Keys
+        </button>
+      </div>
+      <div>
         <h2>Load E2EE Keys</h2>
         <input type="file" multiple onChange={async (e) => {
           handleFileUpload(e)
+        }} />
+      </div>
+      <div>
+        <h2>Save Schnorr Keys</h2>
+        <button onClick={handleSchnorr}>
+          Generate and Save Keys
+        </button>
+      </div>
+      <div>
+        <h2>Load E2EE Keys</h2>
+        <input type="file" multiple onChange={async (e) => {
+          handleUploadSchnorr(e)
         }} />
       </div>
     </div>

@@ -1,4 +1,4 @@
-import crypto from 'crypto';
+// import crypto from 'crypto';
 import bigInt from 'big-integer';
 import { BBS } from './bbs.mjs';
 import { keccakHashFromString } from './keccak.mjs';
@@ -70,7 +70,7 @@ export function hash(message, x) {
     const messageBuffer = Buffer.from(message, 'utf8');
     const xBuffer = Buffer.from(x.toString(), 'utf8');
     const data = Buffer.concat([messageBuffer, xBuffer]);
-    return bigInt(crypto.createHash('sha256').update(data).digest('hex'), 16);
+    return bigInt(window.crypto.createHash('sha256').update(data).digest('hex'), 16);
 }
 
 export function generate_DS(message, s, p, q, alpha){

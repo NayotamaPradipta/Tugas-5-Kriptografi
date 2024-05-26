@@ -10,7 +10,7 @@ const sharedKeyController = require('./controllers/sharedKeyController');
 const { generateKeyPair, computeSharedKey } = require('./lib/ecdh');
 const exp = require('constants');
 const CryptoJS = require('crypto-js');
-const { type } = require('os');
+const { generateGlobalPublicKey } = require('./lib/schnorr');
 
 const app = express();
 app.use(cors());
@@ -26,6 +26,7 @@ const io = new Server(server, {
 
 connectDB().then(() => {
     const userPublicKeys = {};
+    const schnorrParam = generateGlobalPublicKey();
     server.listen(3001, () => {
         console.log('Server is running on port 3001');
     });
@@ -92,7 +93,10 @@ connectDB().then(() => {
             console.log(`Public key from ${userId} broadcasted. `);
         })
 
-
+        socket.on('requestSchnorrParameters', () => {
+            socket.emit('receiveSchnorrParameters', schnorrParam);
+            console.log('Sent Schnorr parameters to client');
+        })
         socket.on('disconnect', () => {
             console.log('A user disconnected', socket.id);
         })
