@@ -20,6 +20,7 @@ function App(){
   const [userConfig, setUserConfig] = useState({username: 'Loading...'});
   const [message, setMessage] = useState('');
   const [chat, setChat] = useState([]);
+  const [digitalSignature, setDigitalSignature] = useState('');
   const socketRef = useRef(null);
   const sharedKeyRef = useRef(null);
   const e2eeKeysRef = useRef(null);
@@ -115,6 +116,14 @@ function App(){
       console.log('Bytes: ', bytes);
       const decryptedBody = JSON.parse(bytes.toString(CryptoJS.enc.Utf8));
       console.log('Decrypted Body: ', decryptedBody);
+
+      if (decryptedBody.isSigned) {
+        const signatureDisplay = `e: ${decryptedBody.dSigned.e}, y: ${decryptedBody.dSigned.y}`;
+        setDigitalSignature(signatureDisplay);
+      } else {
+        setDigitalSignature('');
+      }
+
       // Decrypt inner key using user's private message
       const encryptedInnerMessage = decryptedBody.message;
       console.log(encryptedInnerMessage);
@@ -332,6 +341,11 @@ function App(){
           handleUploadSchnorr(e)
         }} />
       </div>
+      <div>
+        <h2>Digital Signature</h2>
+        <p>{digitalSignature} </p>
+      </div>
+      
     </div>
   );
 }
