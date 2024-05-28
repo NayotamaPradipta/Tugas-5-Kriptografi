@@ -60,8 +60,9 @@ function App(){
     
     return () => {
       if (socketRef.current) {
-          socketRef.current.disconnect();
-          console.log('Disconnected from server');
+        socketRef.current.off('chat message');
+        socketRef.current.disconnect();
+        console.log('Disconnected from server');
       }
     }
   }, []);
@@ -75,7 +76,7 @@ function App(){
     });
     socketRef.current = socket;
 
-    socket.on('connect', () => {
+    socketRef.current.on('connect', () => {
       console.log('Connected to server');
       if (clientKeyPair) {
         socket.on('serverPublicKey', (data) => {
@@ -90,13 +91,13 @@ function App(){
       }
     });
     // Receive public key from the other client
-    socket.on('exchangePublicKeys', (data) => {
+    socketRef.current.on('exchangePublicKeys', (data) => {
       const { userId, publicKey } = data; 
       console.log(`Received public key from ${userId}: ${publicKey}`);
       otherUserPublicKeyRef.current[userId] = publicKey;
     });
 
-    socket.on('exchangeSchnorr', (data) => {
+    socketRef.current.on('exchangeSchnorr', (data) => {
       const { userId, publicKey } = data; 
       console.log(`Received Schnorr key from ${userId}: ${publicKey}`);
       console.log(userId);
@@ -104,13 +105,16 @@ function App(){
     });
 
 
-    socket.on('invalidSharedKey', () => {
+    socketRef.current.on('invalidSharedKey', () => {
       console.log('Shared key invalid. Clearing local storage');
       removeSharedKeyFromLocalStorage(user);
       socket.emit('acknowledgeInvalidKey', 'cleared');
     })
 
     socket.on('chat message', (msg) => {
+        setDigitalSignature('');
+        setVerificationResult('');
+
         // Decrypt body message with shared Key
         const sharedKey = sharedKeyRef.current;
         console.log(sharedKey);
@@ -143,6 +147,7 @@ function App(){
 
     return () => {
       if (socketRef.current) {
+        // socketRef.current.off('chat message');
         socketRef.current.disconnect();
       }
     };
@@ -175,6 +180,8 @@ function App(){
       console.log(encryptedBody);
 
       socketRef.current.emit('chat message', encryptedBody);
+      setDigitalSignature('');
+      setVerificationResult('');
       setMessage('');
       setChat((prevChat) => [...prevChat, `${userConfig.username.toLowerCase()}: ${messageToSend}`]);
     }
@@ -182,17 +189,12 @@ function App(){
 
   const handleSendMessageWithSign = () => {
     if (socketRef.current){
-      socketRef.current.emit('requestSchnorrParameters');
-      socketRef.current.on('receiveSchnorrParameters', (params) => {
-        const { p, q, alpha } = params;
-        globalSchnorrKey.current.p = bigInt(p);
-        globalSchnorrKey.current.q = bigInt(q);
-        globalSchnorrKey.current.alpha = bigInt(alpha);
         const messageToSend = message;
         const receiverName = userConfig.username.toLowerCase() === 'alice' ? 'bob' : 'alice';
         let receiverPublicKey = Object.values(otherUserPublicKeyRef.current)[0];
-        if (!receiverPublicKey) {
-          console.error('Receiver public key not found');
+        let receiverSchnorrPublicKey = Object.values(otherSchnorrPublicKeyRef.current)[0];
+        if (!receiverPublicKey || !receiverSchnorrPublicKey) {
+          console.error('Receiver public key or schnorr public key not found');
           return;
         }
         receiverPublicKey = convertPublicKeyToBigInt(receiverPublicKey);
@@ -216,13 +218,20 @@ function App(){
         console.log(encryptedBody);
   
         socketRef.current.emit('chat message', encryptedBody);
+        setDigitalSignature('');
+        setVerificationResult('');
         setMessage('');
         setChat((prevChat) => [...prevChat, `${userConfig.username.toLowerCase()}: ${messageToSend}`]);
-      })
 
     }
   }
 
+
+  const updateGlobalSchnorrKeys = (params) => {
+    const { p, q, alpha } = params;
+    globalSchnorrKey.current = { p: bigInt(p), q: bigInt(q), alpha: bigInt(alpha) };
+    console.log("Global Schnorr Key updated: ", globalSchnorrKey.current);
+  }
 
   const saveSharedKeyToLocalStorage = (userId, sharedKey, expiresAt) => {
     localStorage.setItem(`${userId}_sharedKey`, sharedKey.toString());
@@ -276,8 +285,8 @@ function App(){
       globalSchnorrKey.current.alpha = bigInt(alpha);
       console.log("Received Schnorr parameters: ", params);
 
-      const privateKey = generatePrivateKey(q);
-      const publicKey = generatePublicKey(privateKey, p, alpha);
+      const privateKey = generatePrivateKey(globalSchnorrKey.current.q);
+      const publicKey = generatePublicKey(privateKey, globalSchnorrKey.current.p, globalSchnorrKey.current.alpha);
       console.log('Private Key: ', privateKey);
       console.log(publicKey);
       schnorrKeysRef.current = { publicKey: publicKey, privateKey: privateKey};
@@ -292,6 +301,8 @@ function App(){
       if (keys) {
           schnorrKeysRef.current = keys;
           console.log('Loaded Schnorr keys:', schnorrKeysRef.current);
+          socketRef.current.emit('requestSchnorrParameters');
+          socketRef.current.once('receiveSchnorrParameters', updateGlobalSchnorrKeys);
           // Emit the public key to the server after successful load
           socketRef.current.emit('sendSchnorrPublicKey', { publicKey: schnorrKeysRef.current.publicKey });
           console.log('Emitted Schnorr Public Key to server');
@@ -302,11 +313,19 @@ function App(){
   };
 
   const verifySchnorr = () => {
-    let userId = userConfig.username.toLowerCase() === 'alice' ? 'bob' : 'alice';
-    const eBigInt = bigInt(lastSignature.current.e);
-    const yBigInt = bigInt(lastSignature.current.y);
-    const result = verify_DS(lastMessage.current, { e: eBigInt, y: yBigInt }, bigInt(otherSchnorrPublicKeyRef.current[userId]), bigInt(globalSchnorrKey.current.p), bigInt(globalSchnorrKey.current.alpha))
-    setVerificationResult(result ? "true" : "false");
+      let userId = userConfig.username.toLowerCase() === 'alice' ? 'bob' : 'alice';
+      const eBigInt = bigInt(lastSignature.current.e);
+      const yBigInt = bigInt(lastSignature.current.y);
+      console.log("Text: ", lastMessage.current);
+      console.log("E:", eBigInt);
+      console.log("Y: ", yBigInt);
+      console.log("Other Public Key: ", otherSchnorrPublicKeyRef.current[userId]);
+      console.log("P value: ", globalSchnorrKey.current.p);
+      console.log("Alpha: ", globalSchnorrKey.current.alpha)
+      const result = verify_DS(lastMessage.current, { e: eBigInt, y: yBigInt }, bigInt(otherSchnorrPublicKeyRef.current[userId]), bigInt(globalSchnorrKey.current.p), bigInt(globalSchnorrKey.current.alpha))
+      console.log("Result: ", result);
+      setVerificationResult(result ? "true" : "false");
+
   }
 
   return (
@@ -324,7 +343,9 @@ function App(){
           <input
             type="text"
             value={message}
-            onChange={(e) => setMessage(e.target.value)}
+            onChange={(e) => {
+              setMessage(e.target.value); 
+            }}
             placeholder="Type a message..."
             className="flex-grow p-2 border border-gray-300 rounded"
           />
@@ -386,6 +407,9 @@ function App(){
       <div className="bg-white p-6 rounded shadow-md w-full max-w-lg mb-6">
         <h2 className="text-xl font-semibold mb-4">Digital Signature</h2>
         <p className="p-2 bg-gray-200 rounded max-h-96 overflow-y-auto">{digitalSignature}</p>
+        <p className="text-xl font-semibold mt-4">
+          Verification Result: {verificationResult}
+        </p>
       </div>
 
       <div className="bg-white p-6 rounded shadow-md w-full max-w-lg mb-6">
