@@ -43,6 +43,7 @@ function App(){
 
     // Check for stored shared key first
     const storedSharedKey = getSharedKeyFromLocalStorage(user);
+    console.log("stored key:", storedSharedKey);
     if (storedSharedKey && new Date() < new Date(storedSharedKey.expiresAt)) {
       sharedKeyRef.current = storedSharedKey.sharedKey;
       sharedKeyRef.expiresAt = storedSharedKey.expiresAt;
@@ -78,8 +79,10 @@ function App(){
 
     socketRef.current.on('connect', () => {
       console.log('Connected to server');
+      const port = window.location.port; 
+      const user = port === '4020' ? 'alice' : port === '2040' ? 'bob' : null; 
       
-      const sharedKey = localStorage.getItem('sharedKey');
+      const sharedKey = localStorage.getItem(`${user}_sharedKey`);
       if (!sharedKey) {
         console.log('No shared key in local storage, requesting server public key.');
         socketRef.current.emit('requestServerPublicKey');

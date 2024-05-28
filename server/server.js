@@ -40,7 +40,7 @@ connectDB().then(() => {
     
             // Emit server's public key
             socket.emit('serverPublicKey', {
-                publicKey: [serverKeyPair.publicNone[0].toString(), serverKeyPair.publicKey[1].toString()],
+                publicKey: [serverKeyPair.publicKey[0].toString(), serverKeyPair.publicKey[1].toString()],
                 expiresAt: expiresAt.toISOString()
             });
     
