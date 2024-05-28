@@ -33,11 +33,8 @@ function encodeChar(char) {
 }
 
 function decodePoint(point) {
-  for (let i = 0; i < validPoints.length; i++) {
-      if (validPoints[i][0] === point[0] && validPoints[i][1] === point[1]) {
-          return String.fromCharCode(i);
-      }
-  }
+  const found = validPoints.find(([px, py]) => px === point[0] && py === point[1]);
+  return found ? String.fromCharCode(validPoints.indexOf(found)) : '?'; 
 }
 
 function encodeString(message) {
