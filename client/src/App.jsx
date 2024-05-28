@@ -78,13 +78,6 @@ function App(){
 
     socketRef.current.on('connect', () => {
       console.log('Connected to server');
-      
-      const sharedKey = localStorage.getItem('sharedKey');
-      if (!sharedKey) {
-        console.log('No shared key in local storage, requesting server public key.');
-        socketRef.current.emit('requestServerPublicKey');
-    }
-
       if (clientKeyPair) {
         socket.on('serverPublicKey', (data) => {
           console.log('Received server public key: ', data.publicKey);
