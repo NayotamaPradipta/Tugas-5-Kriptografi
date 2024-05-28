@@ -33,7 +33,19 @@ connectDB().then(() => {
     });
 
     io.on('connection', async (socket) => {
-        
+        socket.on('requestServerPublicKey', async () => {
+            console.log('Client requested server public key.');
+            const serverKeyPair = generateKeyPair();
+            const expiresAt = new Date(Date.now() + 86400000); // 24 hours later
+    
+            // Emit server's public key
+            socket.emit('serverPublicKey', {
+                publicKey: [serverKeyPair.publicNone[0].toString(), serverKeyPair.publicKey[1].toString()],
+                expiresAt: expiresAt.toISOString()
+            });
+    
+            console.log("Server Public Key:", serverKeyPair.publicKey);
+        });
         const userId = socket.handshake.query.userId;
         console.log('A user connected: ', socket.id, 'userId: ', userId);
         const hasActiveKey = await sharedKeyController.hasActiveSharedKey(userId);
