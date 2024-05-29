@@ -16,8 +16,10 @@ const app = express();
 app.use(cors());
 const server = http.createServer(app);
 const io = new Server(server, {
+    pingInterval: 300000,
+    pingTimeout: 600000,
     cors: {
-        origin: ["http://127.0.0.1:4020", "http://127.0.0.1:2040"],
+        origin: "*",
         methods: ["GET", "POST"],
         allowedHeaders: ["my-custom-header"],
         credentials: true
@@ -37,6 +39,7 @@ connectDB().then(() => {
         const userId = socket.handshake.query.userId;
         console.log('A user connected: ', socket.id, 'userId: ', userId);
         const hasActiveKey = await sharedKeyController.hasActiveSharedKey(userId);
+        console.log(hasActiveKey);
         if (!hasActiveKey) {
             socket.emit('invalidSharedKey');
             socket.on('acknowledgeInvalidKey', async (ack) => {
@@ -126,6 +129,7 @@ connectDB().then(() => {
             const decryptedBody = JSON.parse(bytes.toString(CryptoJS.enc.Utf8));
             console.log('Decrypted body: ', decryptedBody);
             // Encrypt with shared key server + receiver
+            console.log("Decrypted body receiver: ", decryptedBody.receiver);
             const sharedKeyDataReceiver = await sharedKeyController.getSharedKey(decryptedBody.receiver);
             const sharedKeyReceiver = sharedKeyDataReceiver.sharedKey;
             const encryptedBody = CryptoJS.AES.encrypt(JSON.stringify(decryptedBody), sharedKeyReceiver).toString();

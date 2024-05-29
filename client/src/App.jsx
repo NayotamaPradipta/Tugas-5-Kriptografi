@@ -69,6 +69,8 @@ function App(){
 
   const connectToServer = (user, clientKeyPair = null) => {
     const socket = io('http://localhost:3001', {
+      pingInterval: 300000,
+      pingTimeout: 600000,
       query: clientKeyPair ? { 
         userId: user,
         clientPublicKey: clientKeyPair.publicKey

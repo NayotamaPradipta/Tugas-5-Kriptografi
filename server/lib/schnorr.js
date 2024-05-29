@@ -2,10 +2,6 @@ const crypto = require('crypto');
 const bigInt = require('big-integer');
 const { BBS } = require('./bbs');
 const { keccakHashFromString } = require('./keccak');
-/*
-    TODO: 
-    - KECCAK HASH FUNCTION (BONUS)
-*/
 
 function findP(q, bits){
     let p; 

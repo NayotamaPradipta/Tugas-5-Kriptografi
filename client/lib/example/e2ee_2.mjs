@@ -7,15 +7,13 @@ const keypairAlice = generateECDHKeyPair()
 const keypairBob = generateECDHKeyPair()
 const keyPairServer = generateECDHKeyPair()
 
-const test = computeSharedKey(keypairAlice.privateKey, keyPairServer.publicKey);
-let sharedKeyServerAlice = '5012706585773304299494667391592626557327236415116502268688'
-let sharedKeyAliceServer = '5643156490685651858694861461958388076270112876890334873567'
-let sharedKeyServerBob = '2862242940817484767931829385537693569183906934583203588829'
-let sharedKeyBobServer = '643667461031370342458712022835015203972382083415692159932'
-console.log(test);
-console.log(sharedKeyAliceServer);
+let sharedKeyServerAlice = '1956214099092881241147960608629014130664307521381025728690'
+let sharedKeyAliceServer = '1956214099092881241147960608629014130664307521381025728690'
+let sharedKeyServerBob = '5661005149185419865393197190745314227803958233716060116264'
+let sharedKeyBobServer = '5661005149185419865393197190745314227803958233716060116264'
 
-const plaintext = "SUSAH JIR";
+
+const plaintext = "test";
 
 const inner_key = generateKeyPair();
 const encrypted_inner = encrypt(inner_key[1], plaintext);
@@ -39,6 +37,7 @@ console.log(`Re-encrypted for Bob (Server to Bob): ${reEncryptedForBob}`);
 
 // Bob decrypts the message with the shared key between Bob and the Server
 const bytesBob = CryptoJS.AES.decrypt(reEncryptedForBob, sharedKeyBobServer.toString(16));
+console.log(bytesBob);
 const decryptedByBob = bytesBob.toString(CryptoJS.enc.Utf8);
 console.log(`Decrypted by Bob: ${decryptedByBob}`);
 

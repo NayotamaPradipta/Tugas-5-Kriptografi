@@ -23,10 +23,11 @@ console.log(`Encrypted inner: ${encrypted_inner}`);
 
 const transformed_encrypted_inner = convertCipherToString(encrypted_inner);
 console.log("Encrypted Inner Transformed: ", transformed_encrypted_inner);
-
+// Sender to Server
 const encrypted_outer = CryptoJS.AES.encrypt(transformed_encrypted_inner, sharedKeyAliceServer.toString(16)).toString();
 console.log(`Encrypted outer : ${encrypted_outer}`);
 
+// Server decrypt outer layer
 const bytes = CryptoJS.AES.decrypt(encrypted_outer, sharedKeyServerAlice.toString(16));
 const decrypted = bytes.toString(CryptoJS.enc.Utf8);
 console.log(`Decrypted outer: ${decrypted}`);
@@ -34,6 +35,7 @@ console.log(`Decrypted outer: ${decrypted}`);
 const transformed_decrypted_outer = convertStringToCipher(decrypted);
 console.log(transformed_decrypted_outer);
 
+// Server encrypt again to 
 const reEncryptedForBob = CryptoJS.AES.encrypt(decrypted, sharedKeyServerBob.toString(16)).toString();
 console.log(`Re-encrypted for Bob (Server to Bob): ${reEncryptedForBob}`);
 
